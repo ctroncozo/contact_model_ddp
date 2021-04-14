@@ -1,1 +1,2 @@
-# contact_model_ddp
+# Contact Constrain optimization with DDP
+
