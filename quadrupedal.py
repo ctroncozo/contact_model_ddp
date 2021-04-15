@@ -12,10 +12,10 @@ class SimpleQuadrupedalGaitProblem:
         self.state = crocoddyl.StateMultibody(self.rmodel)
         self.actuation = crocoddyl.ActuationModelFloatingBase(self.state)
         # Getting the frame id for all the legs
-        self.lfFootId = self.rmodel.getFrameId(lfFoot)
-        self.rfFootId = self.rmodel.getFrameId(rfFoot)
-        self.lhFootId = self.rmodel.getFrameId(lhFoot)
-        self.rhFootId = self.rmodel.getFrameId(rhFoot)
+        self.lfrontFootId = self.rmodel.getFrameId(lfFoot)
+        self.rfrontFootId = self.rmodel.getFrameId(rfFoot)
+        self.lbackFootId = self.rmodel.getFrameId(lhFoot)
+        self.rbackFootId = self.rmodel.getFrameId(rhFoot)
         # Defining default state
         q0 = self.rmodel.referenceConfigurations["standing"]
         self.rmodel.defaultState = np.concatenate([q0, np.zeros(self.rmodel.nv)])
@@ -238,11 +238,12 @@ class SimpleQuadrupedalGaitProblem:
         q0 = x0[:self.rmodel.nq]
         pinocchio.forwardKinematics(self.rmodel, self.rdata, q0)
         pinocchio.updateFramePlacements(self.rmodel, self.rdata)
-        rfFootPos0 = self.rdata.oMf[self.rfFootId].translation
-        rhFootPos0 = self.rdata.oMf[self.rhFootId].translation
-        lfFootPos0 = self.rdata.oMf[self.lfFootId].translation
-        lhFootPos0 = self.rdata.oMf[self.lhFootId].translation
-        comRef = (rfFootPos0 + rhFootPos0 + lfFootPos0 + lhFootPos0) / 4
+        rFrontFootPos0 = self.rdata.oMf[self.rfrontFootId].translation
+        rBackFootPos0 = self.rdata.oMf[self.rbackFootId].translation
+
+        lFrontFootPos0 = self.rdata.oMf[self.lfrontFootId].translation
+        lBackFootPos0 = self.rdata.oMf[self.lbackFootId].translation
+        comRef = (rFrontFootPos0 + rBackFootPos0 + lFrontFootPos0 + lBackFootPos0) / 4
         comRef[2] = np.asscalar(pinocchio.centerOfMass(self.rmodel, self.rdata, q0)[2])
 
         # Defining the action models along the time instances
@@ -250,26 +251,26 @@ class SimpleQuadrupedalGaitProblem:
         doubleSupport = [
             self.createSwingFootModel(
                 timeStep,
-                [self.lfFootId, self.rfFootId, self.lhFootId, self.rhFootId],
+                [self.lfrontFootId, self.rfrontFootId, self.lbackFootId, self.rbackFootId],
             ) for k in range(supportKnots)
         ]
         if self.firstStep is True:
-            rhStep = self.createFootstepModels(comRef, [rhFootPos0], 0.5 * stepLength, stepHeight, timeStep, stepKnots,
-                                               [self.lfFootId, self.rfFootId, self.lhFootId], [self.rhFootId])
-            rfStep = self.createFootstepModels(comRef, [rfFootPos0], 0.5 * stepLength, stepHeight, timeStep, stepKnots,
-                                               [self.lfFootId, self.lhFootId, self.rhFootId], [self.rfFootId])
+            rbackStep = self.createFootstepModels(comRef, [rBackFootPos0], 0.5 * stepLength, stepHeight, timeStep, stepKnots,
+                                               [self.lfrontFootId, self.rfrontFootId, self.lbackFootId], [self.rbackFootId])
+            rfrontStep = self.createFootstepModels(comRef, [rFrontFootPos0], 0.5 * stepLength, stepHeight, timeStep, stepKnots,
+                                               [self.lfrontFootId, self.lbackFootId, self.rbackFootId], [self.rfrontFootId])
             self.firstStep = False
         else:
-            rhStep = self.createFootstepModels(comRef, [rhFootPos0], stepLength, stepHeight, timeStep, stepKnots,
-                                               [self.lfFootId, self.rfFootId, self.lhFootId], [self.rhFootId])
-            rfStep = self.createFootstepModels(comRef, [rfFootPos0], stepLength, stepHeight, timeStep, stepKnots,
-                                               [self.lfFootId, self.lhFootId, self.rhFootId], [self.rfFootId])
-        lhStep = self.createFootstepModels(comRef, [lhFootPos0], stepLength, stepHeight, timeStep, stepKnots,
-                                           [self.lfFootId, self.rfFootId, self.rhFootId], [self.lhFootId])
-        lfStep = self.createFootstepModels(comRef, [lfFootPos0], stepLength, stepHeight, timeStep, stepKnots,
-                                           [self.rfFootId, self.lhFootId, self.rhFootId], [self.lfFootId])
-        loco3dModel += doubleSupport + rhStep + rfStep
-        loco3dModel += doubleSupport + lhStep + lfStep
+            rbackStep = self.createFootstepModels(comRef, [rBackFootPos0], stepLength, stepHeight, timeStep, stepKnots,
+                                               [self.lfrontFootId, self.rfrontFootId, self.lbackFootId], [self.rbackFootId])
+            rfrontStep = self.createFootstepModels(comRef, [rFrontFootPos0], stepLength, stepHeight, timeStep, stepKnots,
+                                               [self.lfrontFootId, self.lbackFootId, self.rbackFootId], [self.rfrontFootId])
+        lbackStep = self.createFootstepModels(comRef, [lBackFootPos0], stepLength, stepHeight, timeStep, stepKnots,
+                                           [self.lfrontFootId, self.rfrontFootId, self.rbackFootId], [self.lbackFootId])
+        lfrontStep = self.createFootstepModels(comRef, [lFrontFootPos0], stepLength, stepHeight, timeStep, stepKnots,
+                                           [self.rfrontFootId, self.lbackFootId, self.rbackFootId], [self.lfrontFootId])
+        loco3dModel += doubleSupport + rbackStep + rfrontStep
+        loco3dModel += doubleSupport + lbackStep + lfrontStep
 
         problem = crocoddyl.ShootingProblem(x0, loco3dModel, loco3dModel[-1])
         return problem
@@ -297,14 +298,14 @@ def run():
         'stepHeight': 0.15,
         'timeStep': 1e-2,
         'stepKnots': 100,
-        'supportKnots': 2
+        'supportKnots': 3
     }
     # Creating a walking problem
     ddp = crocoddyl.SolverFDDP(
         gait.createWalkingProblem(x0, walking['stepLength'], walking['stepHeight'], walking['timeStep'],
                                   walking['stepKnots'], walking['supportKnots']))
     plot = False
-    display = False
+    display = True
     if display:
         # Added the callback functions
         display = crocoddyl.GepettoDisplay(anymal, 4, 4, cameraTF, frameNames=[lfFoot, rfFoot, lhFoot, rhFoot])
