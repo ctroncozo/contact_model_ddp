@@ -20,7 +20,7 @@ def create_walking_problem():
 
 
 
-
+<p align="center">
 
 <img src="./files/time_step_algo.png" width="350" height="430" title="Algorithm" />
-                                                                             
+</p>                                                                  
