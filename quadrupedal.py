@@ -187,6 +187,8 @@ class SimpleQuadrupedalGaitProblem:
         # integration scheme
         dmodel = crocoddyl.DifferentialActionModelContactFwdDynamics(self.state, self.actuation, contactModel,
                                                                      costModel, 0., True)
+        # Use an Euler sympletic integrator to convert the differential action model into an action model.
+        # Note that our solvers use action model.
         model = crocoddyl.IntegratedActionModelEuler(dmodel, 0.)
         return model
 
@@ -254,24 +256,21 @@ class SimpleQuadrupedalGaitProblem:
                 [self.lfrontFootId, self.rfrontFootId, self.lbackFootId, self.rbackFootId],
             ) for k in range(supportKnots)
         ]
-        if self.firstStep is True:
-            rbackStep = self.createFootstepModels(comRef, [rBackFootPos0], 0.5 * stepLength, stepHeight, timeStep, stepKnots,
+
+        rbackStep = self.createFootstepModels(comRef, [rBackFootPos0], stepLength, stepHeight, timeStep, stepKnots,
                                                [self.lfrontFootId, self.rfrontFootId, self.lbackFootId], [self.rbackFootId])
-            rfrontStep = self.createFootstepModels(comRef, [rFrontFootPos0], 0.5 * stepLength, stepHeight, timeStep, stepKnots,
-                                               [self.lfrontFootId, self.lbackFootId, self.rbackFootId], [self.rfrontFootId])
-            self.firstStep = False
-        else:
-            rbackStep = self.createFootstepModels(comRef, [rBackFootPos0], stepLength, stepHeight, timeStep, stepKnots,
-                                               [self.lfrontFootId, self.rfrontFootId, self.lbackFootId], [self.rbackFootId])
-            rfrontStep = self.createFootstepModels(comRef, [rFrontFootPos0], stepLength, stepHeight, timeStep, stepKnots,
+        rfrontStep = self.createFootstepModels(comRef, [rFrontFootPos0], stepLength, stepHeight, timeStep, stepKnots,
                                                [self.lfrontFootId, self.lbackFootId, self.rbackFootId], [self.rfrontFootId])
         lbackStep = self.createFootstepModels(comRef, [lBackFootPos0], stepLength, stepHeight, timeStep, stepKnots,
                                            [self.lfrontFootId, self.rfrontFootId, self.rbackFootId], [self.lbackFootId])
         lfrontStep = self.createFootstepModels(comRef, [lFrontFootPos0], stepLength, stepHeight, timeStep, stepKnots,
                                            [self.rfrontFootId, self.lbackFootId, self.rbackFootId], [self.lfrontFootId])
-        loco3dModel += doubleSupport + rbackStep + rfrontStep
-        loco3dModel += doubleSupport + lbackStep + lfrontStep
 
+        # Why do we need the double support? at leas for walking does not seem necessary, maybe for other gaits.
+        #loco3dModel += doubleSupport + rbackStep + rfrontStep
+        #loco3dModel += doubleSupport + lbackStep + lfrontStep
+        loco3dModel += rbackStep + rfrontStep
+        loco3dModel += lbackStep + lfrontStep
         problem = crocoddyl.ShootingProblem(x0, loco3dModel, loco3dModel[-1])
         return problem
 
@@ -298,14 +297,14 @@ def run():
         'stepHeight': 0.15,
         'timeStep': 1e-2,
         'stepKnots': 100,
-        'supportKnots': 3
+        'supportKnots': 2
     }
     # Creating a walking problem
     ddp = crocoddyl.SolverFDDP(
         gait.createWalkingProblem(x0, walking['stepLength'], walking['stepHeight'], walking['timeStep'],
                                   walking['stepKnots'], walking['supportKnots']))
     plot = False
-    display = True
+    display = False
     if display:
         # Added the callback functions
         display = crocoddyl.GepettoDisplay(anymal, 4, 4, cameraTF, frameNames=[lfFoot, rfFoot, lhFoot, rhFoot])
