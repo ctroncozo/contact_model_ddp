@@ -17,7 +17,10 @@ Paper Reference: https://ieeexplore.ieee.org/document/8403260
 </p>     
 
 <p>
+ 
 #### Multi-Contact dynamics
+https://github.com/MeMory-of-MOtion/summer-school/blob/master/materials/memmo_summer_school_Contact_Models_Justin_Carpentier.pdf
+
   Describe the multi-contact dynamics through holonomic constraints for the support legs.
 <p align="center">
 <img src="./files/formula1.png" width="190" height="70" title="Algorithm" />
@@ -36,5 +39,10 @@ Paper Reference: https://ieeexplore.ieee.org/document/8403260
 <img src="./files/formula3.png" width="240" height="120" title="Algorithm" />
 </p>  
 
-</p>
 
+</p>
+<p align="center">
+ 
+ #### DDP problem Diagram
+<img src="./files/Notebook.png" width="1000" height="890" title="Algorithm" />
+</p> 
